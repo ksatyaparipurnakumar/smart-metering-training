@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="K. Satya Paripurna Kumar">
+<title>Smart Metering under RDSS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500;62..125,700;62..125,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a field handbook — sticky module rail on wide screens, one reading column, instruments (animations, calculators) set in "panel" frames like a meter cabinet */
+:root{
+  --bg:#F2F4F7; --paper:#FFFFFF; --ink:#13213A; --muted:#55637A; --line:#D3DAE4;
+  --accent:#D98E04;      /* meter LCD amber */
+  --accent-ink:#8A5A00;
+  --grid:#1E66A8;        /* grid blue */
+  --good:#1F8A4C; --warn:#B86E00; --bad:#C0392B;
+  --panel:#0F1B2E; --panel-ink:#DCE6F2; --panel-line:#2A3B57;
+  --lcd:#C9E8B6; --lcd-ink:#1D3313;
+  --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",Consolas,"Courier New",monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C1320; --paper:#131D2E; --ink:#E4EAF3; --muted:#9AA8BE; --line:#26354D;
+  --accent:#F2AE2E; --accent-ink:#F6C766; --grid:#5EA3E6;
+  --good:#4CC27E; --warn:#F0A43A; --bad:#F06B5B;
+  --panel:#08111E; --panel-ink:#DCE6F2; --panel-line:#22324C;
+  --lcd:#9FC98A; --lcd-ink:#102208; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0C1320; --paper:#131D2E; --ink:#E4EAF3; --muted:#9AA8BE; --line:#26354D;
+  --accent:#F2AE2E; --accent-ink:#F6C766; --grid:#5EA3E6;
+  --good:#4CC27E; --warn:#F0A43A; --bad:#F06B5B;
+  --panel:#08111E; --panel-ink:#DCE6F2; --panel-line:#22324C;
+  --lcd:#9FC98A; --lcd-ink:#102208; color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{background:var(--bg);color:var(--ink);font:16px/1.62 var(--f-body);margin:0}
+a{color:var(--grid)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--f-display);text-wrap:balance;line-height:1.12;margin:0}
+h2{font-size:clamp(1.7rem,3.2vw,2.4rem);font-weight:800;font-stretch:80%;letter-spacing:.005em}
+h3{font-size:1.25rem;font-weight:700;font-stretch:90%;margin-top:2rem}
+h4{font-size:1.02rem;font-weight:700;font-stretch:95%}
+p{margin:.6rem 0}
+.mono{font-family:var(--f-mono)}
+.eyebrow{font:600 .74rem/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink)}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap}
+.brand{font:800 1rem/1 var(--f-display);font-stretch:75%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.brand span{color:var(--accent-ink)}
+.toplinks{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}
+.toplinks a{font:500 .85rem var(--f-body);color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:999px;white-space:nowrap}
+.toplinks a:hover{color:var(--ink);background:var(--paper)}
+.toplinks a.on{color:var(--ink);background:var(--paper);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* ---------- hero ---------- */
+.hero{padding-block:36px 10px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:32px;align-items:center}
+@media (max-width:900px){.hero-grid{grid-template-columns:1fr}}
+.hero h1{font-size:clamp(2.4rem,5.6vw,4.4rem);font-weight:800;font-stretch:68%;letter-spacing:-.005em;line-height:.98;margin:.5rem 0 .9rem}
+.hero h1 em{font-style:normal;color:var(--accent-ink)}
+.lede{font-size:1.08rem;color:var(--muted);max-width:56ch}
+.author{margin-top:22px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);background:var(--paper);border-radius:var(--r);max-width:540px}
+.seal{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:var(--panel);color:var(--accent);font:800 1.05rem var(--f-display);font-stretch:70%;letter-spacing:.04em}
+.author b{font-family:var(--f-display);font-stretch:85%;font-size:1.12rem;display:block}
+.author small{color:var(--muted);display:block;line-height:1.4}
+.stage{position:relative;background:var(--panel);border-radius:10px;overflow:hidden;aspect-ratio:16/10;max-width:100%;border:1px solid var(--panel-line)}
+#hero3d{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage-legend{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:8px;background:linear-gradient(transparent,rgba(5,10,20,.85) 40%)}
+.stage-legend div{font:500 .7rem/1.25 var(--f-mono);color:var(--panel-ink);text-align:center;letter-spacing:.02em}
+.stage-legend b{display:block;color:var(--accent);font-weight:500;font-size:.78rem}
+.stage-tag{position:absolute;top:10px;left:12px;font:500 .7rem var(--f-mono);color:#9FB3CF;letter-spacing:.08em;text-transform:uppercase}
+.fallback{position:absolute;inset:0;display:grid;place-items:center;color:var(--panel-ink);font:500 .9rem var(--f-mono);padding:20px;text-align:center}
+
+/* ---------- module map ---------- */
+.mapgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:26px}
+.mapgrid a{display:block;text-decoration:none;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;transition:border-color .2s,transform .2s}
+.mapgrid a:hover{border-color:var(--accent);transform:translateY(-2px)}
+.mapgrid .d{font:800 .78rem var(--f-display);font-stretch:80%;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink)}
+.mapgrid .t{font-weight:600;line-height:1.3;display:block;margin-top:4px}
+.mapgrid .s{font-size:.82rem;color:var(--muted);line-height:1.4;display:block;margin-top:4px}
+
+/* ---------- sections ---------- */
+section.mod{padding-block:56px 20px;border-top:1px solid var(--line);margin-top:40px;scroll-margin-top:60px}
+.modhead{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:end;margin-bottom:18px}
+.daynum{grid-row:span 2;font:800 4.6rem/0.8 var(--f-display);font-stretch:62%;color:var(--accent);letter-spacing:-.02em}
+.modhead p{margin:0;color:var(--muted);max-width:70ch}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
+@media (max-width:860px){.cols{grid-template-columns:1fr}}
+.cols>*{min-width:0}
+.prose{max-width:72ch}
+ul.pts{padding-left:1.1rem;margin:.5rem 0}
+ul.pts li{margin:.32rem 0}
+ul.pts li::marker{color:var(--accent)}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:.6rem 0}
+ol.steps li{counter-increment:s;position:relative;padding:.35rem 0 .35rem 2.4rem}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:.35rem;width:1.7rem;height:1.7rem;border-radius:50%;background:var(--panel);color:var(--accent);font:700 .82rem/1.7rem var(--f-mono);text-align:center}
+.key{border-left:3px solid var(--accent);background:var(--paper);padding:12px 16px;margin:16px 0;border-radius:0 var(--r) var(--r) 0}
+.key b{font-family:var(--f-display);font-stretch:90%}
+.note{font-size:.86rem;color:var(--muted);border:1px dashed var(--line);padding:10px 14px;border-radius:var(--r);margin:14px 0}
+.tbl{overflow-x:auto;margin:12px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{padding:8px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font:600 .74rem var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:color-mix(in srgb,var(--line) 35%,var(--paper))}
+tr:last-child td{border-bottom:0}
+td.mono,td code{font-family:var(--f-mono);font-size:.84rem;white-space:nowrap}
+.pill{display:inline-block;font:600 .72rem/1 var(--f-body);padding:4px 8px;border-radius:999px;letter-spacing:.03em}
+.pill.g{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.pill.w{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.pill.b{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.pill.n{background:color-mix(in srgb,var(--grid) 16%,transparent);color:var(--grid)}
+
+/* ---------- instrument panels ---------- */
+.panel{background:var(--panel);color:var(--panel-ink);border-radius:10px;padding:18px;border:1px solid var(--panel-line);margin:18px 0;overflow:hidden}
+.panel h4{color:#fff;margin-bottom:4px}
+.panel .sub{font:500 .74rem var(--f-mono);color:#8EA3C2;letter-spacing:.06em;text-transform:uppercase}
+.panel label{font:500 .8rem var(--f-body);color:#B7C6DC;display:block;margin-bottom:4px}
+.panel input[type=number],.panel input[type=range]{width:100%}
+.panel input[type=number]{background:#0A1424;color:#fff;border:1px solid var(--panel-line);border-radius:4px;padding:7px 9px;font:500 .95rem var(--f-mono)}
+.panel button,.btn{font:600 .85rem var(--f-body);border:1px solid var(--panel-line);background:#18294A;color:#fff;border-radius:6px;padding:8px 14px;cursor:pointer}
+.panel button:hover,.btn:hover{border-color:var(--accent)}
+.panel button.pri{background:var(--accent);color:#1A1200;border-color:var(--accent)}
+.ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.lcd{background:var(--lcd);color:var(--lcd-ink);font:500 1.15rem var(--f-mono);padding:8px 12px;border-radius:4px;box-shadow:inset 0 2px 6px rgba(0,0,0,.35);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.lcd small{display:block;font-size:.66rem;letter-spacing:.1em;opacity:.75}
+svg text{font-family:var(--f-mono)}
+
+/* exploded meter */
+.meter3d{perspective:1100px;height:380px;display:grid;place-items:center}
+.m-stack{position:relative;width:230px;height:250px;transform-style:preserve-3d;transform:rotateX(58deg) rotateZ(-38deg);transition:transform .8s}
+.m-layer{position:absolute;inset:0;border-radius:10px;border:1.5px solid rgba(255,255,255,.35);display:grid;place-items:center;transition:transform .8s cubic-bezier(.2,.8,.2,1);font:600 .72rem var(--f-mono);color:#fff;text-align:center;padding:10px;backface-visibility:visible}
+.m-layer span{transform:rotateZ(38deg);display:block;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.meter3d.open .m-layer:nth-child(1){transform:translateZ(0)}
+.meter3d.open .m-layer:nth-child(2){transform:translateZ(70px)}
+.meter3d.open .m-layer:nth-child(3){transform:translateZ(140px)}
+.meter3d.open .m-layer:nth-child(4){transform:translateZ(210px)}
+.meter3d.open .m-layer:nth-child(5){transform:translateZ(280px)}
+.meter3d .m-layer{transform:translateZ(calc(var(--i)*6px))}
+.mlegend{display:grid;gap:8px}
+.mlegend div{display:grid;grid-template-columns:14px 1fr;gap:10px;align-items:start;font-size:.88rem}
+.mlegend i{width:14px;height:14px;border-radius:3px;margin-top:4px}
+
+/* decision trees */
+.tree{display:grid;gap:10px}
+.tnode{background:#13233F;border:1px solid var(--panel-line);border-radius:8px;padding:12px 14px}
+.tnode .q{font-weight:600;color:#fff}
+.tnode .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tnode.end{border-color:var(--accent)}
+.tnode.end .q{color:var(--accent)}
+.trail{font:500 .75rem var(--f-mono);color:#8EA3C2}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button[aria-selected=true]{background:var(--accent);color:#1A1200;border-color:var(--accent)}
+
+/* ledger */
+.ledger{max-height:300px;overflow:auto;border:1px solid var(--panel-line);border-radius:6px;margin-top:10px}
+.ledger table{font-size:.82rem}
+.ledger th{background:#13233F;color:#9FB3CF;position:sticky;top:0}
+.ledger td{border-color:var(--panel-line);font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.ledger tr.alert td{color:var(--accent)}
+.ledger tr.off td{color:#FF8A7A}
+
+/* stepper */
+.stepper{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:12px 0}
+.stepper div{height:8px;border-radius:4px;background:#22324C}
+.stepper div.done{background:var(--good)}
+.stepper div.cur{background:var(--accent)}
+.stepper div.fail{background:var(--bad)}
+
+/* galleries */
+.deckbar{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
+.deckbar button{font:600 .82rem var(--f-body);background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:7px 12px;cursor:pointer}
+.deckbar button[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.viewer{background:var(--panel);border-radius:10px;padding:12px;border:1px solid var(--panel-line)}
+.viewer figure{margin:0;position:relative;aspect-ratio:16/9;max-width:100%;background:#000;border-radius:6px;overflow:hidden}
+.viewer figure img{width:100%;height:100%;object-fit:contain;display:block}
+.vctl{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;color:var(--panel-ink)}
+.vctl .cap{flex:1;min-width:0;font:500 .9rem var(--f-body)}
+.vctl .cnt{font:500 .8rem var(--f-mono);color:#8EA3C2}
+.thumbs{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:4px}
+.thumbs button{flex:0 0 96px;padding:0;border:2px solid transparent;border-radius:4px;background:none;cursor:pointer;opacity:.6}
+.thumbs button[aria-current=true]{border-color:var(--accent);opacity:1}
+.thumbs img{display:block;width:100%;border-radius:2px}
+.infogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:12px}
+.infogrid button{padding:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--paper);cursor:zoom-in;text-align:left;color:var(--ink)}
+.infogrid img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
+.infogrid span{display:block;padding:9px 12px;font-weight:600;font-size:.9rem}
+.lightbox{position:fixed;inset:0;background:rgba(4,8,16,.92);z-index:50;display:grid;place-items:center;padding:16px}
+.lightbox img{max-height:86vh;max-width:100%;border-radius:4px}
+.lightbox button{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:14px}
+.vids{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-top:12px}
+@media (max-width:760px){.vids{grid-template-columns:1fr}}
+.vids figure{margin:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.vids video{display:block;width:100%;background:#000;max-height:560px}
+.vids figcaption{padding:10px 14px;font-size:.88rem;color:var(--muted)}
+.vids figcaption b{color:var(--ink);display:block}
+
+/* quiz */
+.q{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin:10px 0}
+.q p{font-weight:600;margin:0 0 8px}
+.q label{display:flex;gap:8px;align-items:flex-start;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:.93rem}
+.q label:hover{background:color-mix(in srgb,var(--line) 40%,transparent)}
+.q.right{border-color:var(--good)} .q.wrong{border-color:var(--bad)}
+.q .why{font-size:.85rem;color:var(--muted);margin-top:6px}
+.score{font:800 2rem var(--f-display);font-stretch:70%}
+
+.glos{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 26px}
+.glos dt{font:600 .9rem var(--f-mono);color:var(--accent-ink);margin-top:10px}
+.glos dd{margin:2px 0 0;font-size:.9rem;color:var(--muted)}
+
+footer{margin-top:60px;padding-block:28px 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.86rem}
+footer b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">RDSS <span>·</span> Smart Metering</div>
+    <nav class="toplinks" aria-label="Modules">
+      <a href="#start">Start</a><a href="#day1">Day 1</a><a href="#day2">Day 2</a><a href="#day3">Day 3</a><a href="#day4">Day 4</a><a href="#day5">Day 5</a><a href="#field">Field tree</a><a href="#library">Decks &amp; media</a><a href="#ref">Quick ref</a><a href="#quiz">Self-check</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="start">
+  <div class="hero-grid">
+    <div>
+      <div class="eyebrow">Participant study material · 5-day hands-on programme</div>
+      <h1>Smart Metering under RDSS: from <em>meter</em> to <em>money</em></h1>
+      <p class="lede">A complete point-by-point handbook for DISCOM engineers. It follows one reading from the consumer's meter, across the communication network, through the Head-End System and MDMS, into the prepaid ledger and back to the field when something goes wrong.</p>
+      <div class="author">
+        <div class="seal" aria-hidden="true">KSP</div>
+        <div>
+          <b>K. Satya Paripurna Kumar</b>
+          <small>B.E., M.B.A., M.I.E. · Deputy Executive Engineer, CT Meters, Vizianagaram</small>
+          <small>APEPDCL (Andhra Pradesh Eastern Power Distribution Company Ltd.)</small>
+        </div>
+      </div>
+    </div>
+    <div class="stage" aria-label="Animated 3D view of the AMI data path">
+      <canvas id="hero3d"></canvas>
+      <div class="stage-tag">Live model · data path</div>
+      <div class="stage-legend">
+        <div><b>Meter</b>IS 16444</div>
+        <div><b>Network</b>RF · NB-IoT · 4G · PLC</div>
+        <div><b>HES</b>DLMS sessions</div>
+        <div><b>MDMS</b>VEE</div>
+        <div><b>Billing</b>Prepaid ledger</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="mapgrid" aria-label="Course map">
+    <a href="#day1"><span class="d">Day 1</span><span class="t">The meter itself</span><span class="s">Anatomy, classes, OBIS, profiles, installation</span></a>
+    <a href="#day2"><span class="d">Day 2</span><span class="t">Communication, HES &amp; MDMS</span><span class="s">Networks, HES operation, VEE, offline cases</span></a>
+    <a href="#day3"><span class="d">Day 3</span><span class="t">Prepaid &amp; complaints</span><span class="s">Ledger engine, billing terms, 6 complaint cases</span></a>
+    <a href="#day4"><span class="d">Day 4</span><span class="t">Energy accounting &amp; tamper</span><span class="s">DT audit, ghost feeder, solar, OMS</span></a>
+    <a href="#day5"><span class="d">Day 5</span><span class="t">Operations &amp; SLA</span><span class="s">Cyber, triage, replacement SOP, capstone</span></a>
+    <a href="#library"><span class="d">Library</span><span class="t">All decks, videos, infographics</span><span class="s">85 slides · 2 videos · 6 posters</span></a>
+  </nav>
+
+  <div class="key"><b>How to use this material.</b> Each day has the key points, one interactive instrument to try, and a link to the matching slide deck in the library. Values marked <span class="pill w">typical</span> come from vendor practice and sample contracts. Check them against your own AMISP agreement and the meter make's manual before quoting them officially.</div>
+</section>
+
+<!-- ================= BIG PICTURE ================= -->
+<section class="mod" id="big">
+  <div class="modhead"><div class="daynum">00</div><h2>The big picture</h2><p>Why the country is changing every consumer meter, and the four layers you will work across.</p></div>
+  <div class="cols">
+    <div class="prose">
+      <h4>RDSS in five points</h4>
+      <ul class="pts">
+        <li><b>Revamped Distribution Sector Scheme</b> of the Ministry of Power: total outlay ₹3,03,758 crore with Gross Budgetary Support of ₹97,631 crore.</li>
+        <li>Goal: bring AT&amp;C losses down to 12–15% and close the gap between cost of supply and revenue realised (ACS–ARR).</li>
+        <li>About <b>22.23 crore prepaid smart meters</b> sanctioned for consumers, DTs and feeders (check current MoP figures before quoting).</li>
+        <li>Delivered through <b>AMISPs</b> (AMI Service Providers) on the <b>DBFOOT</b> model: Design, Build, Finance, Own, Operate, Transfer. The utility pays on performance.</li>
+        <li>Prepaid logic lives centrally in the MDMS and billing system, not on a smart card in the meter.</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Four layers of AMI</h4>
+      <div class="tbl"><table>
+        <tr><th>Layer</th><th>What it contains</th><th>Who you call</th></tr>
+        <tr><td>1 · Physical edge</td><td>IS 16444 meter, CT/PT wiring, terminal block, seals</td><td>Field crew, AMISP installer</td></tr>
+        <tr><td>2 · Transport</td><td>Cellular 4G / NB-IoT, RF mesh + DCU, PLC</td><td>AMISP network team, telecom</td></tr>
+        <tr><td>3 · Data engine</td><td>HES (DLMS/COSEM, IS 15959), MDMS with VEE</td><td>AMISP IT, utility IT</td></tr>
+        <tr><td>4 · Operations</td><td>Prepaid billing, DT energy accounting, GIS, OMS, SCADA</td><td>Revenue, energy audit, O&amp;M</td></tr>
+      </table></div>
+      <div class="key"><b>Remember:</b> a communicating meter is not automatically a billing-ready meter. Raw telemetry in the HES must pass MDMS validation before it becomes billable.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DAY 1 ================= -->
+<section class="mod" id="day1">
+  <div class="modhead"><div class="daynum">01</div><h2>The meter itself</h2><p>Landscape, anatomy, metrology, the DLMS/OBIS language, and how a meter is installed and commissioned.</p></div>
+
+  <div class="cols">
+    <div class="prose">
+      <h4>Legacy meter vs smart prepaid meter</h4>
+      <div class="tbl"><table>
+        <tr><th>Function</th><th>Legacy</th><th>Smart prepaid (AMI)</th></tr>
+        <tr><td>Reading</td><td>Manual monthly visit</td><td>Remote 15/30-min interval reads over DLMS</td></tr>
+        <tr><td>Commercial mode</td><td>Postpaid, often estimated</td><td>Central MDMS prepaid ledger, daily</td></tr>
+        <tr><td>Tamper</td><td>Passive, noticed late</td><td>Battery-backed instant push alerts</td></tr>
+        <tr><td>Load control</td><td>Manual disconnection</td><td>Internal latching relay, remote connect/disconnect</td></tr>
+      </table></div>
+
+      <h4>Meter classes in the field</h4>
+      <div class="tbl"><table>
+        <tr><th>Type</th><th>Standard</th><th>Accuracy</th><th>Used for</th></tr>
+        <tr><td>1-phase whole current</td><td>IS 16444 Part 1</td><td>Class 1.0</td><td>Domestic</td></tr>
+        <tr><td>3-phase whole current</td><td>IS 16444 Part 1</td><td>Class 1.0</td><td>Large domestic, small commercial</td></tr>
+        <tr><td>CT-operated LT/HT</td><td>IS 16444 Part 2</td><td>Class 0.5S / 0.2S</td><td>Industrial, DT and feeder meters (no internal relay)</td></tr>
+      </table></div>
+      <p class="note">IS 16444 Part 1 also permits Class 2 for direct-connected meters. Follow your utility's technical specification.</p>
+    </div>
+
+    <div>
+      <div class="panel" id="meterPanel">
+        <div class="sub">Instrument 1 · exploded view</div>
+        <h4>Inside an IS 16444 smart meter</h4>
+        <div class="meter3d" id="meter3d">
+          <div class="m-stack">
+            <div class="m-layer" style="--i:0;background:#3B4C66"><span>Base · terminal block<br>torque 2.5–3.0 Nm</span></div>
+            <div class="m-layer" style="--i:1;background:#2F6B4F"><span>Metrology AFE<br>shunt / Hall sensor</span></div>
+            <div class="m-layer" style="--i:2;background:#B4561E"><span>Latching relay<br>remote break</span></div>
+            <div class="m-layer" style="--i:3;background:#1E5A93"><span>32-bit MCU · RTC<br>Li-SOCl₂ cell · EEPROM</span></div>
+            <div class="m-layer" style="--i:4;background:#6B4FA0"><span>NIC module<br>optical port</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pri" id="meterBtn" type="button">Explode layers</button><button id="meterSpin" type="button">Rotate</button></div>
+      </div>
+      <div class="mlegend">
+        <div><i style="background:#6B4FA0"></i><span><b>Communication:</b> pluggable NIC (cellular or RF) and a galvanically isolated optical port (IEC 62056-21) for local reading.</span></div>
+        <div><i style="background:#1E5A93"></i><span><b>Processing:</b> 32-bit MCU, real-time clock backed by a lithium cell, non-volatile memory for profiles.</span></div>
+        <div><i style="background:#B4561E"></i><span><b>Switching:</b> bi-stable latching relay for remote disconnect and reconnect (whole-current meters only).</span></div>
+        <div><i style="background:#2F6B4F"></i><span><b>Metrology:</b> analog front end measuring V, I, kW, kvar, PF.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>The DLMS/COSEM language and OBIS codes</h3>
+  <p class="prose">The meter talks to the HES in DLMS/COSEM (IS 15959). Every quantity has an OBIS address. These are the ones you will read most often.</p>
+  <div class="tbl"><table>
+    <tr><th>OBIS</th><th>Quantity</th><th>Field use</th></tr>
+    <tr><td class="mono">1.0.1.8.0.255</td><td>Cumulative active energy, import (kWh)</td><td>Main billing register, grid → consumer</td></tr>
+    <tr><td class="mono">1.0.2.8.0.255</td><td>Cumulative active energy, export (kWh)</td><td>Solar / net metering, consumer → grid</td></tr>
+    <tr><td class="mono">1.0.9.8.0.255</td><td>Cumulative apparent energy (kVAh)</td><td>kVAh billing for commercial and industrial</td></tr>
+    <tr><td class="mono">1.0.1.6.0.255</td><td>Maximum demand, active (kW)</td><td>Demand charges</td></tr>
+    <tr><td class="mono">1.0.9.6.0.255</td><td>Maximum demand, apparent (kVA)</td><td>kVA demand billing</td></tr>
+    <tr><td class="mono">1.0.32 / 52 / 72.7.0.255</td><td>Phase voltages R / Y / B</td><td>Missing phase, floating neutral</td></tr>
+    <tr><td class="mono">1.0.31 / 51 / 71.7.0.255</td><td>Phase currents R / Y / B</td><td>Missing current, bypass</td></tr>
+  </table></div>
+
+  <div class="cols">
+    <div>
+      <h3>The four data profiles in memory</h3>
+      <ol class="steps">
+        <li><b>Instantaneous:</b> live V, I, kW. Read on demand by the HES.</li>
+        <li><b>Load profile:</b> 15/30-minute blocks. Stored locally <span class="pill w">typical 35–60 days</span> during network outages.</li>
+        <li><b>Billing profile:</b> midnight snapshot of cumulative registers (kWh, kVAh, MD). The MDMS bills from this.</li>
+        <li><b>Event / tamper profile:</b> permanent, time-stamped log of anomalies such as cover open or neutral disturbance.</li>
+      </ol>
+    </div>
+    <div>
+      <h3>Installation and commissioning checklist</h3>
+      <ol class="steps">
+        <li>De-energise and isolate. Prove zero potential on all phases and neutral.</li>
+        <li>Mount vertically (within ±5°). Phase association: R-in to R-out.</li>
+        <li>Torque terminals to <span class="pill w">2.5–3.0 Nm</span>. Loose screws cause hot spots and fires.</li>
+        <li>For CT meters, check P1 faces the source and S1/S2 go to the meter's I-in / I-out. Earth S2 at one point only.</li>
+        <li>Power on. Network LED goes from blinking to steady. RSSI better than <span class="pill w">−95 dBm</span>.</li>
+        <li>Scan MAC / ICCID / meter serial number in the AMISP app. Run the ping test.</li>
+        <li>Confirm the first index in HES matches the LCD and the asset shows Active in MDMS. Apply serialised seals and photograph.</li>
+      </ol>
+      <div class="key"><b>Rule:</b> a meter without a digital commissioning ping does not exist in the utility's system.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DAY 2 ================= -->
+<section class="mod" id="day2">
+  <div class="modhead"><div class="daynum">02</div><h2>Communication, HES &amp; MDMS</h2><p>How the reading leaves the meter, how the Head-End System manages it, and how the MDMS decides whether it can be billed.</p></div>
+
+  <h3>Choosing the communication technology</h3>
+  <div class="tbl"><table>
+    <tr><th></th><th>RF mesh (Wi-SUN)</th><th>Cellular 4G</th><th>NB-IoT</th><th>PLC</th></tr>
+    <tr><td><b>Medium</b></td><td>Sub-GHz ISM 865–867 MHz, meter-to-meter hops to a DCU</td><td>Licensed bands, direct to tower</td><td>LPWA, private APN</td><td>LV power line, 35–490 kHz band</td></tr>
+    <tr><td><b>Best for</b></td><td>Dense colonies, rural clusters</td><td>Urban, CT and DT meters</td><td>Deep indoor, basements</td><td>Areas with poor cellular cover</td></tr>
+    <tr><td><b>Strength</b></td><td>No telecom bill, self-healing</td><td>High throughput, &lt;100 ms</td><td>Penetration, low power</td><td>Uses existing conductors</td></tr>
+    <tr><td><b>Typical failure</b></td><td><span class="pill b">Node isolation, DCU outage</span></td><td><span class="pill b">SIM / APN detachment</span></td><td><span class="pill b">Module unseated</span></td><td><span class="pill b">SMPS noise, phase jumpers</span></td></tr>
+  </table></div>
+
+  <div class="cols">
+    <div class="prose">
+      <h3>What the HES does</h3>
+      <ul class="pts">
+        <li><b>Onboarding:</b> registers each meter by serial number, MAC and SIM ICCID.</li>
+        <li><b>Passive reads:</b> instantaneous values on demand; scheduled load, billing and event profiles.</li>
+        <li><b>Active commands:</b> relay disconnect/reconnect <span class="pill w">SLA typical &lt;10 min</span>, time sync, parameter changes, firmware over the air (signed, encrypted).</li>
+        <li><b>Health:</b> last communication time, RSSI, command success rate.</li>
+      </ul>
+      <h3>What the MDMS does</h3>
+      <ul class="pts">
+        <li>Collects raw DLMS payloads, removes duplicates, flags missing blocks and bad CRC.</li>
+        <li>Converts data to a standard model (CIM) and masks consumer identity for DPDP Act compliance.</li>
+        <li>Runs <b>VEE</b>: Validation, Estimation, Editing. Only passed data reaches billing.</li>
+        <li>Holds the master repository for load profiles, billing data and analytics.</li>
+      </ul>
+      <div class="note">Clock rules: the HES corrects meter clocks when drift crosses a small set limit (the decks show ±5 min). The MDMS rejects interval data when drift is larger, <span class="pill w">typical 30 min</span>. Confirm both limits in your AMISP contract.</div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="sub">Instrument 2 · VEE funnel</div>
+        <h4>Watch readings pass or fail validation</h4>
+        <svg id="vee" viewBox="0 0 520 300" width="100%" role="img" aria-label="Animated VEE funnel: readings enter, faulty ones are rejected, gaps are estimated, approved data goes to billing">
+          <defs><linearGradient id="fun" x1="0" x2="1"><stop offset="0" stop-color="#1E5A93" stop-opacity=".55"/><stop offset="1" stop-color="#1E5A93" stop-opacity=".15"/></linearGradient></defs>
+                    <polygon points="60,30 230,30 200,120 90,120" fill="url(#fun)" stroke="#3E6EA5"/>
+          <rect x="95" y="128" width="100" height="56" rx="6" fill="url(#fun)" stroke="#3E6EA5"/>
+          <polygon points="105,192 185,192 170,250 120,250" fill="url(#fun)" stroke="#3E6EA5"/>
+          <text x="245" y="62" fill="#DCE6F2" font-size="12">Validation</text>
+          <text x="245" y="78" fill="#8EA3C2" font-size="10">negative kWh · drift · gaps</text>
+          <text x="210" y="152" fill="#DCE6F2" font-size="12">Estimation</text>
+          <text x="210" y="168" fill="#8EA3C2" font-size="10">&lt;3 h interpolate · else proxy</text>
+          <text x="195" y="222" fill="#DCE6F2" font-size="12">Editing + audit tag</text>
+          <rect x="380" y="232" width="120" height="40" rx="6" fill="#1F8A4C" fill-opacity=".25" stroke="#4CC27E"/>
+          <text x="440" y="257" fill="#BFF0D2" font-size="12" text-anchor="middle">Billing</text>
+          <rect x="380" y="20" width="120" height="40" rx="6" fill="#C0392B" fill-opacity=".22" stroke="#F06B5B"/>
+          <text x="440" y="38" fill="#FFC9C1" font-size="11" text-anchor="middle">Exception queue</text>
+          <text x="440" y="52" fill="#FFC9C1" font-size="10" text-anchor="middle">field action</text>
+          <g id="veeDots"></g>
+        </svg>
+        <div class="ctrls" style="grid-template-columns:repeat(3,1fr)">
+          <div class="lcd"><small>PASSED</small><span id="veeOk">0</span></div>
+          <div class="lcd"><small>ESTIMATED</small><span id="veeEst">0</span></div>
+          <div class="lcd"><small>REJECTED</small><span id="veeRej">0</span></div>
+        </div>
+      </div>
+      <div class="tbl"><table>
+        <tr><th>VEE check</th><th>If it fails</th></tr>
+        <tr><td>Negative incremental consumption</td><td>Reject, investigate meter / mapping</td></tr>
+        <tr><td>RTC drift beyond limit</td><td>Force NTP sync via HES, re-process</td></tr>
+        <tr><td>Energy advance with zero current</td><td>Flag for metrology / tamper check</td></tr>
+        <tr><td>Missing interval blocks</td><td>Estimate and tag VEE_ESTIMATED, or request backfill</td></tr>
+      </table></div>
+    </div>
+  </div>
+
+  <h3>Five offline and data cases, as decision trees</h3>
+  <div class="panel">
+    <div class="sub">Instrument 3 · guided diagnosis</div>
+    <div class="tabs" role="tablist" id="treeTabs"></div>
+    <div class="tree" id="treeBox" aria-live="polite"></div>
+  </div>
+
+  <h3>Field cheat sheet</h3>
+  <div class="tbl"><table>
+    <tr><th>Symptom</th><th>Suspect layer</th><th>First action</th></tr>
+    <tr><td>Meter offline</td><td><span class="pill n">Physical / telecom</span></td><td>Check RSSI, reseat NIC, check APN</td></tr>
+    <tr><td>Relay disconnect fails</td><td><span class="pill n">HES / hardware</span></td><td>Check HES timeout; test continuity across relay terminals (welded contacts)</td></tr>
+    <tr><td>MDMS VEE rejection</td><td><span class="pill n">MDMS / IT</span></td><td>Check NTP sync, re-poll missed blocks</td></tr>
+    <tr><td>Terminal overheating</td><td><span class="pill n">Wiring / hardware</span></td><td>IR / thermal scan (&gt;75 °C is abnormal), re-torque, check conductor size</td></tr>
+    <tr><td>High consumption complaint</td><td><span class="pill n">Consumer / metrology</span></td><td>Accuracy test with reference standard; check earth leakage</td></tr>
+  </table></div>
+</section>
+
+<!-- ================= DAY 3 ================= -->
+<section class="mod" id="day3">
+  <div class="modhead"><div class="daynum">03</div><h2>Prepaid engine &amp; consumer complaints</h2><p>How the daily ledger works, the words consumers will use with you, and six complaint cases with their real causes.</p></div>
+
+  <div class="cols">
+    <div class="prose">
+      <h4>Postpaid vs prepaid</h4>
+      <ul class="pts">
+        <li><b>Postpaid:</b> consume → monthly reading → bill weeks later → arrears → manual disconnection.</li>
+        <li><b>Prepaid:</b> recharge first → 15-min tracking → midnight ledger deduction → low-balance alert → remote disconnect at zero → automatic reconnect on recharge.</li>
+      </ul>
+      <h4>The nine-step prepaid cycle</h4>
+      <ol class="steps">
+        <li>Consumer recharges through app / UPI.</li>
+        <li>Billing system updates the ledger.</li>
+        <li>Meter records 15-min kWh blocks.</li>
+        <li>Cost = kWh × ToD rate + daily share of fixed charges.</li>
+        <li>Deduction posted at midnight.</li>
+        <li>Balance crosses the alert level (e.g. ₹100).</li>
+        <li>SMS and app alert sent.</li>
+        <li>At ₹0 the MDMS asks the HES to open the relay, except in notified non-disconnection hours (nights, holidays).</li>
+        <li>On recharge the HES closes the relay; the consumer may need to press the meter button to confirm.</li>
+      </ol>
+      <h4>Billing words to explain to consumers</h4>
+      <ul class="pts">
+        <li><b>kWh</b> active energy (OBIS 1.8.0); <b>kVAh</b> apparent energy, billed to commercial/industrial to encourage good power factor.</li>
+        <li><b>Maximum demand:</b> highest average load in any 15/30-min block of the billing cycle.</li>
+        <li><b>ToD tariff:</b> different rates by time of day, as notified in the APERC tariff order.</li>
+        <li><b>Fixed charges</b> are spread daily; <b>adjustments</b> include arrears instalments and subsidy credits.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="sub">Instrument 4 · ledger simulator</div>
+        <h4>Run a prepaid account day by day</h4>
+        <div class="ctrls">
+          <div><label for="lgBal">Recharge (₹)</label><input id="lgBal" type="number" value="500" min="0" step="50"></div>
+          <div><label for="lgKwh">Daily use (kWh)</label><input id="lgKwh" type="number" value="10" min="0" step="0.5"></div>
+          <div><label for="lgRate">Energy rate (₹/kWh)</label><input id="lgRate" type="number" value="5" min="0" step="0.25"></div>
+          <div><label for="lgFix">Fixed charge (₹/day)</label><input id="lgFix" type="number" value="10" min="0" step="1"></div>
+          <div><label for="lgArr">Arrears instalment (₹/day)</label><input id="lgArr" type="number" value="0" min="0" step="5"></div>
+          <div><label for="lgAlert">Alert level (₹)</label><input id="lgAlert" type="number" value="100" min="0" step="10"></div>
+        </div>
+        <div class="ctrls" style="grid-template-columns:repeat(3,1fr)">
+          <div class="lcd"><small>DAYS OF SUPPLY</small><span id="lgDays">–</span></div>
+          <div class="lcd"><small>DAILY DEDUCTION</small><span id="lgDed">–</span></div>
+          <div class="lcd"><small>ALERT ON DAY</small><span id="lgAl">–</span></div>
+        </div>
+        <div class="ledger"><table><thead><tr><th>Day</th><th>Energy ₹</th><th>Fixed ₹</th><th>Arrears ₹</th><th>Balance ₹</th><th>Status</th></tr></thead><tbody id="lgBody"></tbody></table></div>
+        <p style="font-size:.8rem;color:#8EA3C2;margin-bottom:0">Example figures only. Add an arrears instalment to see Case 2 below: the balance drains faster with the same consumption.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Six complaint cases</h3>
+  <div class="tbl"><table>
+    <tr><th>Complaint</th><th>Usual real cause</th><th>What to check</th><th>What to do</th></tr>
+    <tr><td>1 · Bill higher than old meter</td><td>Old meter ran slow; the Class 1.0 meter records small loads; peak-hour use; earth leakage</td><td>LCD vs HES 1.8.0; VEE did not estimate wrongly; ToD split</td><td>Explain ToD in the app; electrician for wiring leakage</td></tr>
+    <tr><td>2 · Balance falling too fast</td><td>Daily fixed charges or arrears instalment started on switch to prepaid</td><td>Midnight deduction: energy vs non-energy parts</td><td>Walk the consumer through the ledger</td></tr>
+    <tr><td>3 · Recharged, still disconnected</td><td>Payment-gateway to billing failure, or meter offline and cannot receive reconnect</td><td>Gateway webhook; HES command queue; network LED</td><td>Sync ledger manually; send technician</td></tr>
+    <tr><td>4 · App shows less than LCD</td><td>MDMS VEE rejected reads (clock drift) so data is held back</td><td>VEE exception queue; last read time</td><td>Force NTP sync, re-process VEE</td></tr>
+    <tr><td>5 · Solar consumer: big import, zero export</td><td>CT secondary S1/S2 reversed at installation</td><td>Quadrant / PF sign on HES; 1.8.0 vs 2.8.0</td><td>Correct wiring, recalculate ledger, credit consumer</td></tr>
+    <tr><td>6 · "Meter running fast"</td><td>Rarely the meter; earth leakage or old meter was slow</td><td>Parallel check with a Class 0.2S reference standard</td><td>Show the accuracy result; test is still mandatory on a genuine complaint</td></tr>
+  </table></div>
+
+  <div class="key"><b>Ten rules for complaints:</b> trust the meter log · check HES before sending a vehicle · understand the tariff · teach ToD · trace Meter → HES → MDMS → Billing · look for tamper flags · verify CT polarity on solar and commercial · promote the app · prove with a reference meter, don't swap blindly · close the loop in MDMS, billing and app.</div>
+</section>
+
+<!-- ================= DAY 4 ================= -->
+<section class="mod" id="day4">
+  <div class="modhead"><div class="daynum">04</div><h2>Energy accounting, tamper &amp; solar</h2><p>Using interval data to find losses, reading tamper events correctly, and getting net metering right.</p></div>
+
+  <div class="cols">
+    <div class="prose">
+      <h4>The energy waterfall</h4>
+      <p>Feeder meter (Class 0.2S, 11 kV) → DT meter (Class 0.5S) → consumer meters (Class 1.0). Accounting only works when all three tiers report time-synchronised interval data.</p>
+      <h4>What a DT loss figure proves</h4>
+      <ul class="pts">
+        <li><b>Proves:</b> energy is leaving the network unbilled.</li>
+        <li><b>Does not prove:</b> theft. Causes can be technical (heating, undersized conductors), commercial (consumers mapped to the wrong DT), hardware (DT meter CT wiring) or theft.</li>
+      </ul>
+      <h4>Case: the ghost feeder</h4>
+      <p>An 11 kV feeder's loss jumped from 11.2% to 28.4%. Twelve DTs showed 45–60% loss. GIS cross-check found 340 consumers tagged to the wrong DT during app commissioning. After correcting the hierarchy in MDMS the feeder loss came to 9.8%, with no truck roll.</p>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="sub">Instrument 5 · DT audit</div>
+        <h4>Compute DT loss</h4>
+        <div class="ctrls">
+          <div><label for="dtIn">DT meter input (kWh)</label><input id="dtIn" type="number" value="10000" min="0"></div>
+          <div><label for="dtOut">Sum of consumer meters (kWh)</label><input id="dtOut" type="number" value="8900" min="0"></div>
+        </div>
+        <svg viewBox="0 0 480 70" width="100%" aria-hidden="true">
+          <rect x="0" y="20" width="480" height="26" rx="4" fill="#13233F"/>
+          <rect id="dtBar" x="0" y="20" width="0" height="26" rx="4" fill="#4CC27E"/>
+          <line x1="48" x2="48" y1="12" y2="54" stroke="#8EA3C2" stroke-dasharray="3 3"/>
+          <text x="48" y="10" fill="#8EA3C2" font-size="10" text-anchor="middle">5%</text>
+          <line x1="144" x2="144" y1="12" y2="54" stroke="#F0A43A" stroke-dasharray="3 3"/>
+          <text x="144" y="10" fill="#F0A43A" font-size="10" text-anchor="middle">15%</text>
+          <text x="0" y="66" fill="#8EA3C2" font-size="10">0%</text>
+          <text x="480" y="66" fill="#8EA3C2" font-size="10" text-anchor="end">50%+</text>
+        </svg>
+        <div class="ctrls" style="grid-template-columns:repeat(2,1fr)">
+          <div class="lcd"><small>LOSS kWh</small><span id="dtLoss">–</span></div>
+          <div class="lcd"><small>LOSS %</small><span id="dtPct">–</span></div>
+        </div>
+        <p id="dtMsg" style="margin:6px 0 0;font-size:.9rem"></p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Tamper: an event is not proof of theft</h3>
+  <div class="tbl"><table>
+    <tr><th>Event in MDMS</th><th>Possible technical cause</th><th>Possible tamper</th><th>Meter's response</th></tr>
+    <tr><td>Voltage missing</td><td>Blown fuse, grid outage</td><td>Phase bypassed at service drop</td><td>Logs event with time stamp</td></tr>
+    <tr><td>Current missing (V normal, I = 0)</td><td>No load, empty premises</td><td>CT terminal bypassed</td><td>Logs event</td></tr>
+    <tr><td>Neutral disturbance / earth load</td><td>Loose neutral</td><td>Load returned through an earth rod</td><td>Switches to single-wire mode, bills the higher current</td></tr>
+    <tr><td>Magnetic influence</td><td>Strong field nearby</td><td>Magnet on meter <span class="pill w">typical &gt;0.2 T</span></td><td>Hall sensor logs; may bill at I<sub>max</sub> (make-dependent)</td></tr>
+    <tr><td>Top cover open</td><td>Authorised maintenance</td><td>Opening the meter</td><td>Battery-powered push alert to HES, permanent record</td></tr>
+  </table></div>
+  <div class="key"><b>Zero-consumption case:</b> meter communicates (RSSI −72 dBm), voltage 238 V, current 0.00 A, logs "Neutral Missing" and "Earth Load". The consumer had connected the load between the incoming phase and a copper earth rod. The time-stamped log supports assessment under the Electricity Act after field verification.</div>
+
+  <h3>Solar and net metering: watch the CT polarity</h3>
+  <div class="panel">
+    <div class="sub">Instrument 6 · import / export registers</div>
+    <h4>Move the sun, then reverse S1/S2</h4>
+    <svg id="solar" viewBox="0 0 640 230" width="100%" role="img" aria-label="Animated power flow between grid, meter, house and solar panels">
+      <g id="sun"><circle cx="560" cy="40" r="20" fill="#F2AE2E"/></g>
+      <rect x="470" y="110" width="140" height="70" rx="4" fill="#2A3B57"/><polygon points="460,112 540,62 620,112" fill="#3B4C66"/>
+      <rect x="490" y="70" width="80" height="20" fill="#1E5A93" transform="skewX(-20) translate(40,0)" opacity=".9"/>
+      <text x="540" y="152" fill="#DCE6F2" font-size="12" text-anchor="middle">House + solar</text>
+      <rect x="270" y="95" width="100" height="90" rx="8" fill="#13233F" stroke="#3E6EA5"/>
+      <rect x="285" y="110" width="70" height="26" rx="3" fill="#9FC98A"/>
+      <text x="320" y="128" fill="#102208" font-size="11" text-anchor="middle" id="solarQ">Q1</text>
+      <text x="320" y="160" fill="#DCE6F2" font-size="11" text-anchor="middle">Meter</text>
+      <text x="320" y="174" fill="#8EA3C2" font-size="9" text-anchor="middle" id="solarCT">S1 → S2 correct</text>
+      <path d="M40 200 L60 60 L80 200 M48 140 L72 140 M52 110 L68 110" stroke="#8EA3C2" fill="none" stroke-width="2"/>
+      <text x="60" y="222" fill="#DCE6F2" font-size="12" text-anchor="middle">Grid</text>
+      <line x1="90" y1="140" x2="270" y2="140" stroke="#3E6EA5" stroke-width="3"/>
+      <line x1="370" y1="140" x2="470" y2="140" stroke="#3E6EA5" stroke-width="3"/>
+      <g id="flow"></g>
+      <text x="180" y="128" fill="#DCE6F2" font-size="11" text-anchor="middle" id="flowLbl">Import 3.0 kW</text>
+    </svg>
+    <div class="ctrls">
+      <div><label for="sunR">Solar generation: <span id="sunV">0.0</span> kW</label><input id="sunR" type="range" min="0" max="5" step="0.1" value="0"></div>
+      <div><label for="loadR">House load: <span id="loadV">3.0</span> kW</label><input id="loadR" type="range" min="0" max="5" step="0.1" value="3"></div>
+      <div style="display:flex;align-items:end"><button id="ctBtn" type="button">Reverse S1/S2 (wiring fault)</button></div>
+    </div>
+    <div class="ctrls" style="grid-template-columns:repeat(2,1fr)">
+      <div class="lcd"><small>1.8.0 IMPORT kWh</small><span id="r180">0000.00</span></div>
+      <div class="lcd"><small>2.8.0 EXPORT kWh</small><span id="r280">0000.00</span></div>
+    </div>
+    <p id="solarMsg" style="font-size:.88rem;margin:6px 0 0"></p>
+  </div>
+  <ul class="pts prose">
+    <li>Import (grid → home, +P) is quadrants 1 and 4 and adds to <b>1.8.0</b>. Export (home → grid, −P) is quadrants 2 and 3 and adds to <b>2.8.0</b>.</li>
+    <li>With S1/S2 reversed the meter sees the opposite direction: export is recorded as import and import as export. A negative power factor at midday is the giveaway.</li>
+    <li>Before calling it a fault, check the operating condition, the meter data, CT/PT connections and phase association together.</li>
+  </ul>
+
+  <h3>Grid integration: the autonomous outage</h3>
+  <ol class="steps prose">
+    <li>T+0: a storm drops an LT line.</li>
+    <li>T+1 min: 45 meters push "Power Failure" to HES on their backup power.</li>
+    <li>T+3 min: MDMS correlates the simultaneous events.</li>
+    <li>T+5 min: GIS confirms all 45 share one DT.</li>
+    <li>T+10 min: OMS dispatches the crew before the first consumer calls.</li>
+  </ol>
+</section>
+
+<!-- ================= DAY 5 ================= -->
+<section class="mod" id="day5">
+  <div class="modhead"><div class="daynum">05</div><h2>Operations, cyber security &amp; SLA</h2><p>Keeping the system secure, a disciplined triage habit, the replacement SOP, holding the AMISP to its contract, and the capstone exercise.</p></div>
+
+  <div class="cols">
+    <div class="prose">
+      <h4>Cyber security in four layers</h4>
+      <div class="tbl"><table>
+        <tr><th>Layer</th><th>Controls</th></tr>
+        <tr><td>Meter (edge)</td><td>Device authentication, secure boot, isolated ports, signed firmware only</td></tr>
+        <tr><td>Transport</td><td>TLS 1.3 on cellular, DTLS on RF mesh, AES-GCM-128, DLMS security suites</td></tr>
+        <tr><td>HES / MDMS</td><td>PKI for API handshakes, role-based access, immutable audit trails</td></tr>
+        <tr><td>Data privacy</td><td>DPDP Act compliance; consumer identity masked inside MDMS</td></tr>
+      </table></div>
+      <h4>Triage: never jump to conclusions, trace the data</h4>
+      <ol class="steps">
+        <li><b>Field / wiring:</b> tampering, neutral bypass, consumer side fault?</li>
+        <li><b>Meter hardware:</b> blank display, welded relay?</li>
+        <li><b>Communication:</b> SIM, RF node, APN?</li>
+        <li><b>HES:</b> command timeout, decryption failure, HES down?</li>
+        <li><b>MDMS / billing:</b> VEE rejection, interface failure?</li>
+      </ol>
+    </div>
+    <div>
+      <h4>Meter replacement SOP</h4>
+      <ol class="steps">
+        <li><b>Diagnose:</b> confirm stoppage, erratic data or display failure.</li>
+        <li><b>Isolate:</b> open upstream cut-outs, prove dead on phases and neutral.</li>
+        <li><b>Replace:</b> fit the new meter, torque to 2.5–3.0 Nm.</li>
+        <li><b>Commission:</b> network latch, sync device ID in the AMISP app.</li>
+        <li><b>Document:</b> photograph old final index, seal, match physical and digital readings.</li>
+      </ol>
+      <h4>AMISP SLA matrix <span class="pill w">typical, verify in contract</span></h4>
+      <div class="tbl"><table>
+        <tr><th>Parameter</th><th>Target</th><th>Penalty</th></tr>
+        <tr><td>Midnight data collection</td><td>≥ 98% meters within 24 h</td><td>Proportionate OPEX deduction</td></tr>
+        <tr><td>On-demand read</td><td>&lt; 30 s for 95% of requests</td><td>Per failed transaction</td></tr>
+        <tr><td>Remote connect / disconnect</td><td>Within 10 min</td><td>Per failed event</td></tr>
+        <tr><td>HES / MDMS uptime</td><td>&gt; 99.5%</td><td>SLA escrow deduction</td></tr>
+        <tr><td>Non-communicating recovery</td><td>48 h urban / 72 h rural</td><td>Daily liquidated damages</td></tr>
+      </table></div>
+    </div>
+  </div>
+
+  <h3>Capstone: Vidyut Nagar DISCOM</h3>
+  <div class="cols">
+    <div class="prose">
+      <p><b>Assets:</b> 10 feeders, 100 DTs, 10,000 consumers, mixed RF and cellular.</p>
+      <p><b>Problems in the data pack:</b> VEE rejections in HES/MDMS logs; un-indexed consumers and billing mismatches; a backlog of non-communicating meters in dense blocks; top-cover and magnet alerts; solar consumers with reverse-current errors on 1.8.0/2.8.0.</p>
+    </div>
+    <div>
+      <p><b>Your team presents:</b></p>
+      <ol class="steps">
+        <li>End-to-end AMI architecture</li><li>Communication strategy (RF vs cellular)</li><li>Installation and commissioning plan</li><li>Troubleshooting plan for offline meters</li><li>Energy accounting and AT&amp;C reduction</li><li>Consumer complaint and tamper handling</li><li>O&amp;M governance and rapid-response teams</li><li>SLA dashboard and KPIs</li><li>90-day corrective roadmap</li>
+      </ol>
+    </div>
+  </div>
+
+  <h3>Twenty field rules</h3>
+  <div class="cols">
+    <ol class="steps">
+      <li>An event log is an anomaly to investigate, not a penalty.</li>
+      <li>Zero consumption with good communication: suspect neutral / earth or phase bypass.</li>
+      <li>Solar export errors: check S1/S2 first.</li>
+      <li>Triage in order: Field → Meter → Comms → HES → MDMS → Billing.</li>
+      <li>Never replace a meter without isolating upstream.</li>
+      <li>Torque matters: 2.5–3.0 Nm.</li>
+      <li>Cover-open records are permanent, even without mains.</li>
+      <li>Photograph the final index before removal.</li>
+      <li>Match the class: 1.0 domestic, 0.5S CT commercial, 0.2S feeders.</li>
+      <li>Standardise phase allocation at the terminal block.</li>
+    </ol>
+    <ol class="steps" start="11" style="counter-reset:s 10">
+      <li>Sudden feeder loss spikes usually mean GIS mapping errors.</li>
+      <li>RSSI worse than −105 dBm: fit a high-gain external antenna.</li>
+      <li>Meters keep weeks of profile data through outages; request backfill.</li>
+      <li>Prepaid disconnection is decided by MDMS logic, not the meter.</li>
+      <li>Clock drift ruins data: keep NTP sync healthy.</li>
+      <li>Failed remote disconnect: suspect a welded relay or low auxiliary voltage.</li>
+      <li>Enforce the 98% data availability clause.</li>
+      <li>Escalate urban non-communicators after 48 hours.</li>
+      <li>Hands off the internals: use optical probe and buttons only.</li>
+      <li>The meter is a sensor; validated MDMS data is the product.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================= FIELD TREE ================= -->
+<section class="mod" id="field">
+  <div class="modhead"><div class="daynum">10</div><h2>The 10-step field troubleshooting tree</h2><p>Use this on every site visit. Answer each question honestly; the tool tells you the corrective action when a step fails.</p></div>
+  <div class="panel">
+    <div class="sub">Instrument 7 · site visit stepper</div>
+    <div class="stepper" id="stepBar"></div>
+    <div class="tnode" id="stepNode"></div>
+  </div>
+</section>
+
+<!-- ================= LIBRARY ================= -->
+<section class="mod" id="library">
+  <div class="modhead"><div class="daynum">▶</div><h2>Slide decks, videos and infographics</h2><p>Every deck from the course, slide by slide, plus the two explainer videos and six one-page posters.</p></div>
+
+  <h3>Slide decks</h3>
+  <div class="deckbar" role="tablist" id="deckBar"></div>
+  <div class="viewer">
+    <figure><img id="slideImg" src="assets/slides/d1_01.jpg" alt="Slide"></figure>
+    <div class="vctl">
+      <button id="prevS" type="button" aria-label="Previous slide">◀ Prev</button>
+      <div class="cap" id="slideCap"></div>
+      <span class="cnt" id="slideCnt"></span>
+      <button id="nextS" type="button" aria-label="Next slide">Next ▶</button>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+
+  <h3>Videos</h3>
+  <div class="vids">
+    <figure>
+      <video controls preload="metadata" poster="assets/video/diagnosing-poster.jpg"><source src="assets/video/diagnosing-smart-meters.mp4" type="video/mp4"></video>
+      <figcaption><b>Diagnosing Smart Meters (9 min)</b>Layer-by-layer Check → Normal → Abnormal: physical, CT wiring, communication and HES, MDMS, billing. Use with Day 3 and Day 5.</figcaption>
+    </figure>
+    <figure>
+      <video controls preload="metadata" poster="assets/video/neutral-poster.jpg"><source src="assets/video/neutral-bypass-tamper.mp4" type="video/mp4"></video>
+      <figcaption><b>How meters detect neutral bypass (71 s)</b>Zero current with normal voltage, single-wire mode, "Neutral Missing" log, VEE flag. Use with Day 4.</figcaption>
+    </figure>
+  </div>
+
+  <h3>Infographics</h3>
+  <div class="infogrid" id="infoGrid"></div>
+</section>
+
+<!-- ================= QUICK REF ================= -->
+<section class="mod" id="ref">
+  <div class="modhead"><div class="daynum">≡</div><h2>Quick reference</h2><p>Numbers and terms to keep in the field diary.</p></div>
+  <div class="cols">
+    <div>
+      <h4>Field numbers <span class="pill w">typical</span></h4>
+      <div class="tbl"><table>
+        <tr><th>Item</th><th>Value</th></tr>
+        <tr><td>Terminal torque</td><td class="mono">2.5–3.0 Nm</td></tr>
+        <tr><td>Healthy RSSI at commissioning</td><td class="mono">better than −95 dBm</td></tr>
+        <tr><td>Fit external antenna</td><td class="mono">worse than −105 dBm</td></tr>
+        <tr><td>VEE clock-drift rejection</td><td class="mono">&gt; 30 min</td></tr>
+        <tr><td>Linear estimation window</td><td class="mono">&lt; 3 h gap</td></tr>
+        <tr><td>Local profile storage</td><td class="mono">35–60 days</td></tr>
+        <tr><td>Magnetic tamper threshold</td><td class="mono">&gt; 0.2 T</td></tr>
+        <tr><td>Terminal overheating</td><td class="mono">&gt; 75 °C</td></tr>
+        <tr><td>LT DT loss needing inspection</td><td class="mono">&gt; 15% sustained</td></tr>
+        <tr><td>Low-balance alert</td><td class="mono">₹100 (example)</td></tr>
+        <tr><td>RTC accuracy</td><td class="mono">≤ 0.5 s/day</td></tr>
+      </table></div>
+    </div>
+    <div>
+      <h4>Glossary</h4>
+      <dl class="glos">
+        <dt>AMI</dt><dd>Advanced Metering Infrastructure: meter, network, HES, MDMS together.</dd>
+        <dt>AMISP</dt><dd>AMI Service Provider who installs, operates and is paid per SLA.</dd>
+        <dt>DBFOOT</dt><dd>Design-Build-Finance-Own-Operate-Transfer contract model.</dd>
+        <dt>HES</dt><dd>Head-End System: talks to meters, sends commands.</dd>
+        <dt>MDMS</dt><dd>Meter Data Management System: stores, validates, prepares billing data.</dd>
+        <dt>VEE</dt><dd>Validation, Estimation, Editing of meter data.</dd>
+        <dt>DLMS/COSEM</dt><dd>Meter data protocol (IS 15959 in India).</dd>
+        <dt>OBIS</dt><dd>Code that addresses each meter quantity, e.g. 1.0.1.8.0.255.</dd>
+        <dt>DCU</dt><dd>Data Concentrator Unit collecting RF mesh or PLC meters.</dd>
+        <dt>NIC</dt><dd>Network Interface Card: the meter's plug-in comms module.</dd>
+        <dt>RSSI</dt><dd>Received signal strength, in dBm (closer to 0 is stronger).</dd>
+        <dt>ICCID</dt><dd>SIM card serial number used at onboarding.</dd>
+        <dt>NTP</dt><dd>Network Time Protocol used to correct meter clocks.</dd>
+        <dt>CIM</dt><dd>Common Information Model for utility data exchange.</dd>
+        <dt>ToD</dt><dd>Time-of-Day tariff.</dd>
+        <dt>DPDP Act</dt><dd>Digital Personal Data Protection Act, 2023.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- ================= QUIZ ================= -->
+<section class="mod" id="quiz">
+  <div class="modhead"><div class="daynum">?</div><h2>Self-check</h2><p>Twelve questions. Pick an answer to see whether it is right and why.</p></div>
+  <div id="quizBox"></div>
+  <p>Score: <span class="score" id="quizScore">0 / 12</span></p>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b>Smart Metering under RDSS — Participant Study Material</b><br>Prepared by <b>K. Satya Paripurna Kumar</b>, B.E., M.B.A., M.I.E., Deputy Executive Engineer / CT Meters / Vizianagaram, APEPDCL.</p>
+    <p>Compiled from the course decks, videos and infographics prepared for the 5-day smart metering programme. Example dashboards and figures are illustrative. Contract values (SLA, thresholds) vary by AMISP agreement and meter make; verify before official use.</p>
+  </div>
+</footer>
+
+<div class="lightbox" id="lb" hidden><button class="btn" id="lbClose" type="button">Close ✕</button><img id="lbImg" alt=""></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = s => document.querySelector(s);
+
+/* ================= HERO 3D ================= */
+(function(){
+  const cv = $('#hero3d');
+  if(!window.THREE){ cv.insertAdjacentHTML('afterend','<div class="fallback">Meter → Network → HES → MDMS → Billing</div>'); return; }
+  let r;
+  try{ r = new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); }catch(e){ cv.insertAdjacentHTML('afterend','<div class="fallback">Meter → Network → HES → MDMS → Billing</div>'); return; }
+  r.setPixelRatio(Math.min(devicePixelRatio,2));
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0F1B2E, 18, 40);
+  const cam = new THREE.PerspectiveCamera(38,1,0.1,100);
+  cam.position.set(0,7.5,15); cam.lookAt(0,0.6,0);
+  scene.add(new THREE.AmbientLight(0x8fa8cc,0.55));
+  const dl = new THREE.DirectionalLight(0xffffff,0.9); dl.position.set(5,10,7); scene.add(dl);
+  const pl = new THREE.PointLight(0xF2AE2E,0.8,20); pl.position.set(0,4,2); scene.add(pl);
+  const grid = new THREE.GridHelper(40,40,0x2A3B57,0x1A2A44); grid.position.y=-0.01; scene.add(grid);
+  const M = (c,e=0)=> new THREE.MeshStandardMaterial({color:c,roughness:.55,metalness:.25,emissive:e?c:0x000000,emissiveIntensity:e});
+  const X = [-8,-4,0,4,8];
+  // meter
+  const meter = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.6,2.1,0.8),M(0xC8D2DE)); body.position.y=1.05; meter.add(body);
+  const lcd = new THREE.Mesh(new THREE.BoxGeometry(1.0,0.38,0.05),M(0x9FC98A,0.35)); lcd.position.set(0,1.55,0.42); meter.add(lcd);
+  const tb = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.35,0.9),M(0x3B4C66)); tb.position.y=0.17; meter.add(tb);
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.07,12,12),M(0x4CC27E,1)); led.position.set(0.5,1.05,0.42); meter.add(led);
+  meter.position.x=X[0]; scene.add(meter);
+  // tower
+  const tower = new THREE.Group();
+  const tmat = new THREE.LineBasicMaterial({color:0x8EA3C2});
+  const tg = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-.7,0,0),new THREE.Vector3(0,3.4,0),new THREE.Vector3(.7,0,0),new THREE.Vector3(-.45,1.1,0),new THREE.Vector3(.45,1.1,0),new THREE.Vector3(-.25,2.2,0),new THREE.Vector3(.25,2.2,0)]);
+  tower.add(new THREE.LineSegments(tg,tmat));
+  const tg2 = tg.clone(); const t2 = new THREE.LineSegments(tg2,tmat); t2.rotation.y=Math.PI/2; tower.add(t2);
+  const rings=[]; for(let i=0;i<3;i++){ const ring=new THREE.Mesh(new THREE.TorusGeometry(0.4+i*0.35,0.02,8,48),new THREE.MeshBasicMaterial({color:0x5EA3E6,transparent:true,opacity:.6})); ring.position.y=3.4; ring.rotation.x=Math.PI/2; tower.add(ring); rings.push(ring); }
+  tower.position.x=X[1]; scene.add(tower);
+  // HES racks
+  const hes = new THREE.Group();
+  for(let i=0;i<2;i++){ const rack=new THREE.Mesh(new THREE.BoxGeometry(0.9,2.4,0.9),M(0x1E3355)); rack.position.set(i*1.0-0.5,1.2,0); hes.add(rack);
+    for(let j=0;j<5;j++){ const l=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.06,0.02),M(j%2?0x5EA3E6:0x4CC27E,1)); l.position.set(i*1.0-0.5,0.5+j*0.4,0.46); hes.add(l);} }
+  hes.position.x=X[2]; scene.add(hes);
+  // MDMS cylinders + funnel
+  const mdms = new THREE.Group();
+  for(let i=0;i<3;i++){ const c=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,0.55,32),M(0x2F6B4F)); c.position.y=0.3+i*0.62; mdms.add(c); }
+  const fun = new THREE.Mesh(new THREE.ConeGeometry(0.7,1,32,1,true),new THREE.MeshStandardMaterial({color:0x5EA3E6,transparent:true,opacity:.5,side:THREE.DoubleSide}));
+  fun.rotation.x=Math.PI; fun.position.y=2.6; mdms.add(fun);
+  mdms.position.x=X[3]; scene.add(mdms);
+  // billing card / phone
+  const bill = new THREE.Group();
+  const ph = new THREE.Mesh(new THREE.BoxGeometry(1.1,2.0,0.12),M(0x13213A)); ph.position.y=1.4; bill.add(ph);
+  const scr = new THREE.Mesh(new THREE.BoxGeometry(0.95,1.75,0.02),M(0xF2AE2E,0.4)); scr.position.set(0,1.4,0.07); bill.add(scr);
+  const bars=[]; for(let i=0;i<4;i++){ const b=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.5,0.03),M(0x13213A)); b.position.set(-0.3+i*0.2,1.1,0.09); bill.add(b); bars.push(b);}
+  bill.position.x=X[4]; bill.rotation.y=-0.25; scene.add(bill);
+  // path + packets
+  const pts = [new THREE.Vector3(X[0],2.2,0),new THREE.Vector3(-6,3.6,0),new THREE.Vector3(X[1],3.4,0),new THREE.Vector3(-2,3.2,0),new THREE.Vector3(X[2],2.6,0),new THREE.Vector3(2,3.4,0),new THREE.Vector3(X[3],2.9,0),new THREE.Vector3(6,3.1,0),new THREE.Vector3(X[4],2.5,0)];
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(curve,160,0.025,8,false),new THREE.MeshBasicMaterial({color:0x2E5C8F,transparent:true,opacity:.7}));
+  scene.add(tube);
+  const packets=[]; for(let i=0;i<14;i++){ const p=new THREE.Mesh(new THREE.SphereGeometry(0.11,12,12),new THREE.MeshBasicMaterial({color:i%5===0?0xF06B5B:0xF2AE2E})); p.userData.t=i/14; p.userData.bad=(i%5===0); scene.add(p); packets.push(p);}
+  function size(){ const w=cv.clientWidth,h=cv.clientHeight; r.setSize(w,h,false); cam.aspect=w/h; cam.fov = w<520?50:38; cam.updateProjectionMatrix(); }
+  new ResizeObserver(size).observe(cv); size();
+  let t0=performance.now();
+  function frame(now){
+    const t=(now-t0)/1000;
+    packets.forEach(p=>{ let u=(p.userData.t + t*0.07)%1; if(p.userData.bad && u>0.72){ p.visible=false; } else p.visible=true; p.position.copy(curve.getPoint(u)); });
+    rings.forEach((g,i)=>{ const s=1+((t*0.8+i*0.33)%1)*0.8; g.scale.set(s,s,s); g.material.opacity=.7-((t*0.8+i*0.33)%1)*0.7; });
+    led.material.emissiveIntensity = 0.4+0.6*Math.abs(Math.sin(t*3));
+    fun.rotation.y = t*0.8;
+    bars.forEach((b,i)=>{ b.scale.y=0.5+0.5*Math.abs(Math.sin(t*1.2+i)); });
+    scene.rotation.y = Math.sin(t*0.15)*0.18;
+    r.render(scene,cam);
+    if(!RM) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ================= EXPLODED METER ================= */
+(function(){
+  const box=$('#meter3d'), st=box.querySelector('.m-stack'); let spin=false, ang=-38, raf;
+  $('#meterBtn').onclick=e=>{ box.classList.toggle('open'); e.target.textContent=box.classList.contains('open')?'Collapse layers':'Explode layers'; };
+  $('#meterSpin').onclick=()=>{ spin=!spin; if(spin){ st.style.transition='none'; const go=()=>{ ang+=0.5; st.style.transform=`rotateX(58deg) rotateZ(${ang}deg)`; if(spin) raf=requestAnimationFrame(go); }; go(); } else { cancelAnimationFrame(raf); st.style.transition=''; } };
+  if(!RM) setTimeout(()=>{ box.classList.add('open'); $('#meterBtn').textContent='Collapse layers'; },900);
+})();
+
+/* ================= VEE FUNNEL ================= */
+(function(){
+  const g=$('#veeDots'); const ns='http://www.w3.org/2000/svg'; let ok=0,est=0,rej=0;
+  function spawn(){
+    const c=document.createElementNS(ns,'circle'); c.setAttribute('r',5);
+    const kind = Math.random(); const type = kind<0.15?'rej':kind<0.32?'est':'ok';
+    c.setAttribute('fill', '#F2AE2E'); g.appendChild(c);
+    const x0=80+Math.random()*120; const start=performance.now(); const dur=3600;
+    function step(now){
+      const u=Math.min((now-start)/dur,1); let x,y;
+      if(type==='rej' && u>0.3){ const v=(u-0.3)/0.7; x=145+ (440-145)*v; y=75-(75-40)*v; c.setAttribute('fill','#F06B5B'); }
+      else if(u<0.3){ const v=u/0.3; x=x0+(145-x0)*v; y=30+(115-30)*v; }
+      else if(u<0.6){ const v=(u-0.3)/0.3; x=145; y=115+(190-115)*v; if(type==='est'){ c.setAttribute('fill','#5EA3E6'); c.setAttribute('stroke','#fff'); c.setAttribute('stroke-dasharray','2 2'); } }
+      else { const v=(u-0.6)/0.4; x=145+(440-145)*v; y=190+(252-190)*v; if(type!=='est') c.setAttribute('fill','#4CC27E'); }
+      c.setAttribute('cx',x); c.setAttribute('cy',y);
+      if(u<1) requestAnimationFrame(step); else { c.remove(); if(type==='ok')ok++; else if(type==='est')est++; else rej++; $('#veeOk').textContent=ok; $('#veeEst').textContent=est; $('#veeRej').textContent=rej; }
+    }
+    requestAnimationFrame(step);
+  }
+  if(RM){ $('#veeOk').textContent='83'; $('#veeEst').textContent='12'; $('#veeRej').textContent='5'; }
+  else { setInterval(spawn,520); }
+})();
+
+/* ================= DECISION TREES (Day 2) ================= */
+const TREES = {
+ 'Never communicates': {q:'Is the meter powered and is voltage normal?', o:[
+   ['No', {end:'Check the upstream fuse / cut-out and phase allocation at the terminals.'}],
+   ['Yes',{q:'What does the network latch LED show?', o:[
+      ['Off or blinking',{end:'Probe SIM voltage and check ICCID. Reseat the NIC module. If RSSI is worse than −105 dBm, fit an external high-gain antenna.'}],
+      ['Steady (latched)',{end:'Check the HES registration payload. MAC / meter serial number must match the commissioning entry in the mobile app.'}]]}]]},
+ 'Suddenly offline': {q:'Check last-communication time in HES. Did neighbouring meters drop at the same time?', o:[
+   ['Yes',{end:'Check GIS/OMS for a local supply outage. If supply is healthy, check the local telecom tower.'}],
+   ['No, only this meter',{q:'Read the event log through the optical probe. What does it show?', o:[
+      ['Top cover open / magnet',{end:'Suspect tamper or vandalism. Inspect, photograph, and follow the tamper procedure.'}],
+      ['Log is clean',{end:'Suspect eSIM APN detachment or a rejected firmware push. Ping from HES; escalate to AMISP network team.'}]]}]]},
+ '50 meters offline': {q:'Are all 50 meters on the same DT or feeder?', o:[
+   ['Yes',{end:'Check 11 kV feeder / DT supply status. This is a physical grid failure, not a metering fault.'}],
+   ['No, or DT is healthy',{q:'Which network serves them?', o:[
+      ['RF mesh',{end:'Probe the upstream DCU. Suspect WAN backhaul outage at the concentrator.'}],
+      ['Cellular / NB-IoT',{end:'Suspect tower congestion or ISP routing failure to the secure APN. Raise with telecom via AMISP.'}]]}]]},
+ 'HES has data, billing does not': {q:'HES instantaneous read is normal. Did the data pass MDMS VEE?', o:[
+   ['No, stuck in exception queue',{end:'Look for negative incremental consumption or clock drift beyond limit. Trigger forced NTP sync via HES and re-process.'}],
+   ['Yes, it passed',{end:'Check the MDMS-to-billing API. Verify the meter serial number in MDMS is mapped to the right service connection number in billing.'}]]},
+ 'Incomplete load profile': {q:'Is RSSI continuously fluctuating?', o:[
+   ['Yes',{end:'Suspect intermittent local RF interference. Survey the site; relocate antenna if needed.'}],
+   ['No',{end:'Check the HES retry scheduler and send an on-demand block backfill (meters hold weeks of profiles). If backfill fails, read memory health through the optical probe.'}]]}
+};
+(function(){
+  const tabs=$('#treeTabs'), box=$('#treeBox');
+  function render(name,node,trail){
+    box.innerHTML='';
+    const t=document.createElement('div'); t.className='trail'; t.textContent=trail.length?trail.join(' → '):'Start'; box.appendChild(t);
+    const d=document.createElement('div'); d.className='tnode'+(node.end?' end':'');
+    d.innerHTML=`<div class="q">${node.end?'Action: '+node.end:node.q}</div>`;
+    const acts=document.createElement('div'); acts.className='acts';
+    if(node.o) node.o.forEach(([lab,next])=>{ const b=document.createElement('button'); b.type='button'; b.textContent=lab; b.onclick=()=>render(name,next,[...trail,lab]); acts.appendChild(b); });
+    else { const b=document.createElement('button'); b.type='button'; b.textContent='Start again'; b.onclick=()=>render(name,TREES[name],[]); acts.appendChild(b); }
+    d.appendChild(acts); box.appendChild(d);
+  }
+  Object.keys(TREES).forEach((k,i)=>{ const b=document.createElement('button'); b.type='button'; b.role='tab'; b.textContent=`Case ${i+1}: ${k}`; b.onclick=()=>{ tabs.querySelectorAll('button').forEach(x=>x.setAttribute('aria-selected','false')); b.setAttribute('aria-selected','true'); render(k,TREES[k],[]); }; tabs.appendChild(b); if(i===0){b.setAttribute('aria-selected','true'); render(k,TREES[k],[]);} });
+})();
+
+/* ================= LEDGER ================= */
+(function(){
+  const ids=['lgBal','lgKwh','lgRate','lgFix','lgArr','lgAlert'];
+  function calc(){
+    const [bal,kwh,rate,fix,arr,al]=ids.map(i=>Math.max(0,parseFloat($('#'+i).value)||0));
+    const e=kwh*rate, ded=e+fix+arr; let b=bal, rows='', alertDay='–', day=0, days='∞';
+    $('#lgDed').textContent='₹'+ded.toFixed(2);
+    if(ded<=0){ $('#lgDays').textContent='∞'; $('#lgAl').textContent='–'; $('#lgBody').innerHTML='<tr><td colspan="6">No deduction</td></tr>'; return; }
+    rows+=`<tr><td>0</td><td>–</td><td>–</td><td>–</td><td>${b.toFixed(2)}</td><td>Recharged</td></tr>`;
+    while(b>0 && day<120){ day++; b-=ded; let st='Supply ON', cls='';
+      if(b<=0){ st='Relay OPEN (next permitted hour)'; cls='off'; days=day; }
+      else if(b<=al){ st='Low-balance alert'; cls='alert'; if(alertDay==='–') alertDay=day; }
+      rows+=`<tr class="${cls}"><td>${day}</td><td>${e.toFixed(2)}</td><td>${fix.toFixed(2)}</td><td>${arr.toFixed(2)}</td><td>${b.toFixed(2)}</td><td>${st}</td></tr>`; }
+    $('#lgDays').textContent= days==='∞'?'120+':(days-1)+' full'; $('#lgAl').textContent=alertDay; $('#lgBody').innerHTML=rows;
+  }
+  ids.forEach(i=>$('#'+i).addEventListener('input',calc)); calc();
+})();
+
+/* ================= DT AUDIT ================= */
+(function(){
+  function calc(){ const a=parseFloat($('#dtIn').value)||0, b=parseFloat($('#dtOut').value)||0; const loss=a-b, pct=a>0?loss/a*100:0;
+    $('#dtLoss').textContent=loss.toFixed(0); $('#dtPct').textContent=pct.toFixed(1)+'%';
+    const w=Math.max(0,Math.min(pct,50))/50*480; const bar=$('#dtBar'); bar.setAttribute('width',w);
+    let col='#4CC27E',msg='Within normal technical loss. Keep monitoring.';
+    if(pct<0){col='#5EA3E6';msg='Consumers billed more than the DT supplied: check DT meter CT ratio, CT wiring and consumer-to-DT mapping in GIS.';}
+    else if(pct>15){col='#F06B5B';msg='Sustained loss above 15%: verify GIS mapping first, then DT meter wiring, then plan a targeted inspection for tapping or bypass.';}
+    else if(pct>5){col='#F0A43A';msg='Elevated. Check conductor sizing, loose joints and un-indexed consumers.';}
+    bar.setAttribute('fill',col); $('#dtMsg').textContent=msg; $('#dtMsg').style.color=col; }
+  ['dtIn','dtOut'].forEach(i=>$('#'+i).addEventListener('input',calc)); calc();
+})();
+
+/* ================= SOLAR / CT ================= */
+(function(){
+  let rev=false, imp=0, exp=0, last=performance.now(); const ns='http://www.w3.org/2000/svg'; const flow=$('#flow');
+  const dots=[]; for(let i=0;i<10;i++){ const c=document.createElementNS(ns,'circle'); c.setAttribute('r',4.5); c.setAttribute('cy',140); flow.appendChild(c); dots.push(c);}
+  function state(){ const s=parseFloat($('#sunR').value), l=parseFloat($('#loadR').value); $('#sunV').textContent=s.toFixed(1); $('#loadV').textContent=l.toFixed(1); return {s,l,net:l-s}; }
+  function tick(now){
+    const {s,l,net}=state(); const dt=(now-last)/1000; last=now;
+    const seen = rev? -net : net;           // what the meter measures
+    const k = dt*0.05;                       // sim speed: 1 s ≈ 3 min of energy
+    if(seen>0) imp+=seen*k; else exp+=(-seen)*k;
+    $('#r180').textContent=imp.toFixed(2).padStart(7,'0'); $('#r280').textContent=exp.toFixed(2).padStart(7,'0');
+    const dir = net>=0?1:-1, mag=Math.abs(net);
+    $('#flowLbl').textContent = mag<0.05?'Balanced, no flow':(net>0?'Import ':'Export ')+mag.toFixed(1)+' kW (actual)';
+    $('#solarQ').textContent = seen>0.05?'Q1 · +P':seen<-0.05?'Q2/3 · −P':'0';
+    $('#sun').setAttribute('opacity',0.25+0.75*s/5);
+    dots.forEach((c,i)=>{ const u=((now/1000)*(0.25+mag*0.12)+i/10)%1; const x = dir>0? 90+u*380 : 470-u*380; c.setAttribute('cx',x); c.setAttribute('fill', net>0?'#F2AE2E':'#4CC27E'); c.setAttribute('opacity', mag<0.05?0:0.9); });
+    let msg;
+    if(!rev) msg = net>0? 'Correct wiring: grid supply adds to 1.8.0 (import).' : net<0? 'Correct wiring: surplus solar adds to 2.8.0 (export).' : 'Load equals generation.';
+    else msg = net<0? 'FAULT: real export is being recorded as import on 1.8.0. The consumer is billed for the energy they supplied. PF sign reads negative at midday.' : 'FAULT: real import is being recorded as export on 2.8.0. The utility loses revenue.';
+    $('#solarMsg').textContent=msg; $('#solarMsg').style.color = rev?'#F06B5B':'#9FC98A';
+    if(!RM) requestAnimationFrame(tick);
+  }
+  $('#ctBtn').onclick=e=>{ rev=!rev; e.target.textContent=rev?'Correct S1/S2 wiring':'Reverse S1/S2 (wiring fault)'; e.target.classList.toggle('pri',rev); $('#solarCT').textContent=rev?'S2 → S1 REVERSED':'S1 → S2 correct'; if(RM) tick(performance.now()); };
+  ['sunR','loadR'].forEach(i=>$('#'+i).addEventListener('input',()=>{ if(RM) tick(performance.now()); }));
+  requestAnimationFrame(tick);
+})();
+
+/* ================= 10-STEP STEPPER ================= */
+(function(){
+  const S=[
+   ['Is supply healthy?','Check upstream fuse, cut-out, and phase-to-neutral voltage with a multimeter.','Repair or replace the upstream fuse / cut-out before touching the meter.'],
+   ['Is the meter display normal?','Look for blank, frozen, flickering screens or error codes. Scroll with the push button.','Re-make connections; if supply is healthy and display is dead, replace the meter (follow the SOP).'],
+   ['Are phase voltages correct?','Read 1.0.32/52/72.7.0.255 (about 230–240 V each).','Fix floating neutral, loose terminals or missing phase.'],
+   ['Are phase currents correct?','Compare meter currents with a clamp-on meter on the cables.','Look for neutral missing, earth-load drawing or bypassed wiring.'],
+   ['Are CT / PT connections correct?','CT meters: P1 to source, S1/S2 to meter I-in/I-out, phase association R-R, Y-Y, B-B.','Correct reversed S1/S2 and wrong phase pairing; earth CT secondaries at a single point.'],
+   ['Is the meter communicating?','Network LED steady, RSSI better than −95 dBm, SIM seated.','Reseat NIC, check SIM, fit external antenna.'],
+   ['Is HES receiving data?','Onboarding status, last communication, push events arriving.','Re-sync registration (meter serial / ICCID) and tune HES retry limits.'],
+   ['Is MDMS receiving valid data?','VEE exception queue, clock drift, missing profiles.','Trigger NTP time sync and request profile backfill.'],
+   ['Is billing receiving correct data?','Billing sync and GIS DT/feeder mapping for the service.','Correct GIS hierarchy in MDMS and recalculate the ledger.'],
+   ['Root cause confirmed?','Verify the fix across Field → Meter → HES → MDMS → Billing.','Escalate to AMISP / DISCOM authority with a geotagged site report.']];
+  const bar=$('#stepBar'), node=$('#stepNode'); let i=0, res=[];
+  S.forEach(()=>bar.appendChild(document.createElement('div')));
+  function draw(){
+    [...bar.children].forEach((d,k)=>{ d.className = res[k]==='ok'?'done':res[k]==='fail'?'fail':k===i?'cur':''; });
+    if(i>=S.length){ node.className='tnode end'; node.innerHTML='<div class="q">All ten steps passed. Record the visit and close the complaint in MDMS, billing and the app.</div><div class="acts"><button type="button" id="rs">New site visit</button></div>'; $('#rs').onclick=()=>{i=0;res=[];draw();}; return; }
+    const [q,chk]=S[i]; node.className='tnode';
+    node.innerHTML=`<div class="trail">Step ${i+1} of 10</div><div class="q">${q}</div><p style="margin:.4rem 0 0;color:#B7C6DC">Check: ${chk}</p><div class="acts"><button type="button" class="pri" id="okB">OK, next step</button><button type="button" id="ngB">Not OK</button>${i?'<button type="button" id="bkB">Back</button>':''}</div>`;
+    $('#okB').onclick=()=>{res[i]='ok';i++;draw();};
+    $('#ngB').onclick=()=>{res[i]='fail'; [...bar.children].forEach((d,k)=>d.className=res[k]==='ok'?'done':res[k]==='fail'?'fail':''); node.className='tnode end'; node.innerHTML=`<div class="trail">Step ${i+1} failed</div><div class="q">Action: ${S[i][2]}</div><div class="acts"><button type="button" id="fx">Fixed, re-check this step</button><button type="button" id="rs2">Start over</button></div>`; $('#fx').onclick=()=>{res[i]=undefined;draw();}; $('#rs2').onclick=()=>{i=0;res=[];draw();}; };
+    if(i) $('#bkB').onclick=()=>{i--;res[i]=undefined;draw();};
+  }
+  draw();
+})();
+
+/* ================= DECK VIEWER ================= */
+const DECKS = {
+ d1:{n:'Day 1 · Field Engineering Manual', t:['RDSS mission dashboard','Legacy vs smart prepaid','Field taxonomy of IS 16444 meters','Device architecture','Metrology and field validation','DLMS/COSEM and OBIS codes','Four data profiles in memory','Installation and HES commissioning','CT polarity and net metering','Active tamper intelligence','RCA 1 · zero consumption, communicating','RCA 2 · one phase current missing','RCA 3 · meter differs from test instrument','RCA 4 · commissioning failure after replacement','Commissioning checklist']},
+ d2:{n:'Day 2 · Communication, HES & MDMS', t:['Title','Complete AMI data path','Communication technologies matrix','Network topologies and data flow','HES · meter management','HES · data retrieval and commands','MDMS ingestion','VEE engine','Interface to billing','Case 1 · never communicates','Case 2 · suddenly offline','Case 3 · 50 meters offline','Case 4 · HES has data, billing does not','Case 5 · incomplete load profile','Field troubleshooting cheat sheet']},
+ d3:{n:'Day 3 · Prepaid & Diagnostics', t:['Title','Prepaid vs postpaid','Energy and tariff terms','Commercial and system terms','Prepaid engine end to end','Field operations and troubleshooting','Case 1 · high bill','Case 2 · balance falling fast','Case 3 · recharge not reflected','Case 4 · app differs from meter','Case 5 · solar reverse current','Case 6 · "meter running fast"','Diagnostic tree','10 rules for complaints']},
+ d4:{n:'Day 4 · Data to Field Action', t:['Title','Energy waterfall','Diagnostic toolkit','DT audit','The ghost feeder','Event is not theft','Decoding tamper events','Zero-consumption inspection','Solar and net metering','Solar billing error','Grid integration pipeline','Autonomous OMS','Engineer’s digital workflow','Closing']},
+ d5:{n:'Day 5 · Operations Masterclass', t:['Title','Agenda','Zero-trust cyber security','Triage pathway','Replacement SOP','AMISP governance','SLA clocks and system health','Utility dashboard','Capstone · Vidyut Nagar DISCOM','Capstone deliverables','20 rules · part 1','20 rules · part 2']},
+ ov:{n:'Overview · Practical Field Guide', t:['Title','End-to-end AMI blueprint','Hardware anatomy','Commissioning and zero-consumption case','Selecting communication topology','VEE engine','Centralised prepaid lifecycle','Frontline diagnostic matrix','DT energy accounting','Solar quadrants','Fraud detection profiles','Cyber security layers','AMISP SLA governance','Command dashboard','Core rules']}
+};
+(function(){
+  let deck='d1', idx=0; const bar=$('#deckBar'), img=$('#slideImg'), th=$('#thumbs');
+  const src=(d,i)=>`assets/slides/${d}_${String(i+1).padStart(2,'0')}.jpg`;
+  function show(){ const D=DECKS[deck]; img.src=src(deck,idx); img.alt=`${D.n}, slide ${idx+1}: ${D.t[idx]}`; $('#slideCap').textContent=D.t[idx]; $('#slideCnt').textContent=`${idx+1} / ${D.t.length}`;
+    [...th.children].forEach((b,k)=>b.setAttribute('aria-current',k===idx)); const c=th.children[idx]; if(c) th.scrollTo({left:c.offsetLeft-th.clientWidth/2+c.clientWidth/2,behavior:'smooth'}); }
+  function load(d){ deck=d; idx=0; th.innerHTML=''; DECKS[d].t.forEach((t,k)=>{ const b=document.createElement('button'); b.type='button'; b.title=t; b.innerHTML=`<img loading="lazy" src="${src(d,k)}" alt="">`; b.onclick=()=>{idx=k;show();}; th.appendChild(b); });
+    [...bar.children].forEach(b=>b.setAttribute('aria-selected',b.dataset.d===d)); show(); }
+  Object.entries(DECKS).forEach(([k,D])=>{ const b=document.createElement('button'); b.type='button'; b.role='tab'; b.dataset.d=k; b.textContent=D.n; b.onclick=()=>load(k); bar.appendChild(b); });
+  $('#prevS').onclick=()=>{ idx=(idx-1+DECKS[deck].t.length)%DECKS[deck].t.length; show(); };
+  $('#nextS').onclick=()=>{ idx=(idx+1)%DECKS[deck].t.length; show(); };
+  img.parentElement.addEventListener('click',()=>openLB(img.src,img.alt));
+  img.style.cursor='zoom-in';
+  load('d1');
+})();
+
+/* ================= INFOGRAPHICS + LIGHTBOX ================= */
+function openLB(s,a){ $('#lbImg').src=s; $('#lbImg').alt=a||''; $('#lb').hidden=false; $('#lbClose').focus(); }
+$('#lbClose').onclick=()=>{$('#lb').hidden=true;}; $('#lb').onclick=e=>{ if(e.target.id==='lb') $('#lb').hidden=true; };
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('#lb').hidden=true; });
+(function(){
+  const I=[['01_ami-flow','Complete AMI data flow and enterprise integration'],['02_solar','Smart meter + solar: import and export'],['03_tree','10-step field troubleshooting tree'],['04_ct-meter','Smart CT meter: when the reading looks wrong'],['05_prepaid','How a prepaid smart meter works'],['06_hes-mdms','HES vs MDMS: what each system does']];
+  const g=$('#infoGrid'); I.forEach(([f,t])=>{ const b=document.createElement('button'); b.type='button'; b.innerHTML=`<img loading="lazy" src="assets/info/${f}.jpg" alt="${t}"><span>${t}</span>`; b.onclick=()=>openLB(`assets/info/${f}.jpg`,t); g.appendChild(b); });
+})();
+
+/* ================= QUIZ ================= */
+(function(){
+  const Q=[
+   ['Which OBIS register holds cumulative active energy exported to the grid?',['1.0.1.8.0.255','1.0.2.8.0.255','1.0.9.6.0.255','1.0.32.7.0.255'],1,'2.8.0 is export (−P). 1.8.0 is import.'],
+   ['Under RDSS, where does the prepaid balance logic run?',['On a smart card in the meter','In the meter firmware','Centrally in the MDMS / billing system','In the consumer’s phone'],2,'The meter only executes relay commands sent through the HES.'],
+   ['A meter communicates well, shows 238 V and 0.00 A with load running, and logs "Earth Load". Most likely cause?',['Weak signal','Load connected through an earth rod (neutral bypass)','VEE rejection','Wrong tariff'],1,'Zero current with normal voltage and an earth-load flag points to a neutral bypass.'],
+   ['A solar consumer shows large import and no export at midday with negative PF. First thing to check?',['SIM card','CT secondary S1/S2 polarity','Tariff order','RTC battery'],1,'Reversed S1/S2 swaps import and export.'],
+   ['HES has fresh readings but the consumer app is three days behind. Where do you look first?',['Terminal torque','MDMS VEE exception queue','DCU antenna','Upstream fuse'],1,'Data that fails VEE (often clock drift) is held back from billing and the app.'],
+   ['50 meters on one DT go offline together. What is the first check?',['Replace all NICs','DT / feeder supply status','Clock drift','Consumer complaints'],1,'Simultaneous loss on one DT is usually a supply outage.'],
+   ['Which technology uses meter-to-meter hops to a DCU?',['NB-IoT','4G cellular','RF mesh','Fibre'],2,'RF mesh is self-forming and self-healing via a DCU.'],
+   ['A DT shows 11% loss. What does this prove?',['Theft is happening','Energy is leaving unbilled; cause still to be found','The DT meter is faulty','Nothing'],1,'Loss can be technical, mapping, hardware or theft. Investigate before concluding.'],
+   ['Recommended terminal screw torque (typical) for meters in these decks?',['0.5–1.0 Nm','2.5–3.0 Nm','6–8 Nm','10 Nm'],1,'Under-torque causes hot spots and fires.'],
+   ['A feeder loss jumps from 11% to 28% overnight after a commissioning drive. Likely cause?',['Massive theft','Consumers mapped to the wrong DT/feeder in GIS','Meter class mismatch','Rain'],1,'The ghost-feeder case: correcting GIS mapping brought loss to 9.8%.'],
+   ['What does VEE stand for?',['Voltage, Energy, Efficiency','Validation, Estimation, Editing','Verify, Execute, Enforce','Value, Error, Event'],1,'VEE is the MDMS gatekeeper for billable data.'],
+   ['Typical AMISP target for daily midnight data collection?',['80%','90%','98%','100%'],2,'Below 98% triggers proportionate OPEX deduction (check your contract).']
+  ];
+  const box=$('#quizBox'); let score=0;
+  Q.forEach(([q,opts,ans,why],i)=>{ const d=document.createElement('div'); d.className='q'; d.innerHTML=`<p>${i+1}. ${q}</p>`+opts.map((o,k)=>`<label><input type="radio" name="q${i}" id="q${i}_${k}" value="${k}"> <span>${o}</span></label>`).join('')+`<div class="why" hidden></div>`;
+    d.addEventListener('change',e=>{ if(d.dataset.done) return; d.dataset.done=1; const k=+e.target.value; const ok=k===ans; if(ok) score++; d.classList.add(ok?'right':'wrong'); const w=d.querySelector('.why'); w.hidden=false; w.textContent=(ok?'Correct. ':'Not quite. Answer: '+opts[ans]+'. ')+why; d.querySelectorAll('input').forEach(x=>x.disabled=true); $('#quizScore').textContent=`${score} / ${Q.length}`; });
+    box.appendChild(d); });
+})();
+
+/* ================= NAV HIGHLIGHT ================= */
+(function(){
+  const links=[...document.querySelectorAll('.toplinks a')]; const secs=links.map(a=>document.querySelector(a.getAttribute('href')));
+  const io=new IntersectionObserver(es=>{ es.forEach(e=>{ if(e.isIntersecting){ links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id)); } }); },{rootMargin:'-45% 0px -50% 0px'});
+  secs.forEach(s=>s&&io.observe(s));
+})();
+</script>
+
+</body>
+</html>
